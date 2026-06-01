@@ -15,16 +15,10 @@ or the game itself. It is not affiliated with the game developer.
 ## Demo
 
 The full screen recording is intentionally not committed to git. Upload it as a
-GitHub Release asset and link it here:
+GitHub Release asset and link it here once available:
 
 ```md
 [Watch the demo](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1-demo/eternum-octomil-tts-demo.mov)
-```
-
-Local source recording used for the first demo:
-
-```text
-/Users/seanb/Library/Group Containers/group.com.apple.screencapture/ScreenRecordings/9C3263BF-E5B8-4329-AF36-18069C079A8F.mov
 ```
 
 ## What It Does

@@ -1,0 +1,17 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Keep demo video assets out of git. Upload these as GitHub Release assets
+# or host them externally, then link them from README.md.
+media/*.mov
+media/*.mp4
+media/*.gif
+media/*.webm
+
+# Local app/package backups.
+*.bak
+*.backup
+*.tar
+*.tar.gz
+*.zip

@@ -392,6 +392,32 @@ init -10 python:
     # done-callback consults this set and plays the WAV when it lands.
     _octomil_play_wanted = set()
 
+    def _octomil_prune_pending(keep_abs_paths):
+        """Cancel stale synths so fast clicking does not build a long queue.
+
+        Late audio is still useful as cache if it is already almost done, but
+        queued/stale jobs must not make the current foreground line wait behind
+        dozens of old misses.
+        """
+        keep = set(p for p in keep_abs_paths if p)
+        cancelled = 0
+        with _octomil_pending_lock:
+            stale = [
+                (path, fut)
+                for path, fut in list(_octomil_pending.items())
+                if path not in keep
+            ]
+            for path, fut in stale:
+                _octomil_pending.pop(path, None)
+                _octomil_play_wanted.discard(path)
+                try:
+                    fut.cancel()
+                    cancelled += 1
+                except Exception:
+                    pass
+        if cancelled:
+            _octomil_log("pruned stale synth jobs: %d" % cancelled)
+
     # Resolve TtsRequestPriority — added in 4.15 (PR #485). Fall back to
     # plain strings if the enum isn't importable on older SDKs.
     try:
@@ -628,6 +654,9 @@ init -10 python:
 
         def _on_done(f):
             try:
+                if f.cancelled():
+                    _octomil_log("stream bg cancelled voice=%s" % voice)
+                    return
                 f.result()  # raises if stream failed
             except Exception as e:
                 _octomil_log("stream bg fail: " + repr(e))
@@ -794,8 +823,10 @@ init -10 python:
         if not text:
             # Narration / no-voice line. Mark "no current voiced line" so an
             # in-flight synth for the previous line suppresses its own
-            # playback (current_path guard). No hard channel stop.
+            # playback (current_path guard), and cancel queued stale synths.
+            # No hard channel stop.
             _octomil_state["current_path"] = None
+            _octomil_prune_pending(())
             return
         # Voice id + cache path are pure (hashing only, no engine), so we
         # compute them even before the engine has finished warming up.
@@ -809,6 +840,10 @@ init -10 python:
         # was clipping rapid dialogue and could cut the game's own SFX
         # (this is the shared "sound" channel).
         _octomil_state["current_path"] = abs_path
+        # Fast-click behavior: line n+50 must not wait for uncached lines
+        # n..n+49 to finish. Keep only the current line if already pending;
+        # everything else is stale and should either cancel or quietly fail.
+        _octomil_prune_pending((abs_path,))
         # Ensure mixer is audible.
         try:
             if renpy.game.preferences.get_volume("sfx") <= 0.01:

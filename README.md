@@ -33,7 +33,8 @@ GitHub Release asset and link it here once available:
 
 ## Files
 
-- [game/octomil_tts.rpy](game/octomil_tts.rpy): drop-in Ren'Py script.
+- [game/octomil_tts.rpy](game/octomil_tts.rpy): thin drop-in Ren'Py script.
+- [game/octomil_voice_map.json](game/octomil_voice_map.json): app-owned character/tag voice map.
 - [scripts/install_macos.sh](scripts/install_macos.sh): copies the script into a macOS Ren'Py app bundle.
 - [scripts/verify.py](scripts/verify.py): verifies SDK/runtime/native Kokoro synthesis from an installed bundle.
 - [data/voice_map_aliases.json](data/voice_map_aliases.json): generated alias-to-voice table.
@@ -49,6 +50,7 @@ GitHub Release asset and link it here once available:
   - keyless local client support,
   - Python 3.9-safe generated types,
   - native Kokoro routing.
+  - `octomil.integrations.local_tts`.
 - Octomil native runtime with:
   - `tts` flavor,
   - Kokoro support,
@@ -76,6 +78,28 @@ Then verify:
 ```bash
 ./scripts/verify.py /Applications/Eternum-tts.app
 ```
+
+## What Lives Where
+
+Octomil owns the reusable TTS machinery:
+
+- client lifecycle and warmup,
+- generated WAV cache,
+- async synthesis worker,
+- foreground vs speculative priority,
+- stale-job pruning on rapid advance,
+- late-play suppression.
+
+The Ren'Py script owns only game/framework glue:
+
+- character callback hook,
+- speaker/tag to voice lookup,
+- text cleanup,
+- AST lookahead,
+- Ren'Py sound playback.
+
+The voice map is app content and intentionally lives in
+`game/octomil_voice_map.json`, not in the Octomil SDK.
 
 ## Voice Mapping
 

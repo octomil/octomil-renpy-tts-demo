@@ -9,9 +9,11 @@ fi
 APP="$1"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE="$ROOT/game/octomil_tts.rpy"
+VOICE_MAP_SOURCE="$ROOT/game/octomil_voice_map.json"
 AUTORUN="$APP/Contents/Resources/autorun"
 GAME_DIR="$AUTORUN/game"
 TARGET="$GAME_DIR/octomil_tts.rpy"
+VOICE_MAP_TARGET="$GAME_DIR/octomil_voice_map.json"
 
 if [[ ! -d "$APP/Contents/Resources/autorun" ]]; then
   echo "Not a macOS Ren'Py app bundle: $APP" >&2
@@ -36,6 +38,11 @@ fi
 
 cp "$SOURCE" "$TARGET"
 echo "Installed: $TARGET"
+
+if [[ -f "$VOICE_MAP_SOURCE" ]]; then
+  cp "$VOICE_MAP_SOURCE" "$VOICE_MAP_TARGET"
+  echo "Installed: $VOICE_MAP_TARGET"
+fi
 
 echo
 echo "Next checks:"

@@ -123,21 +123,23 @@ Kokoro 82M exposes 53 voices. Most visual novels have more characters than that,
 so this demo treats Kokoro voices as archetypes rather than one unique voice per
 character.
 
-The included map is intentionally tiny and neutral:
+The included map is a real large-cast example with 400+ aliases. Main-cast
+assignments include:
 
 ```text
-Alice Beaumont -> af_bella
-Ben Harper     -> bm_fable
-Cora Ames      -> af_sky
-Darius Quinn   -> am_michael
-Elena Cross    -> bf_lily
-Frank Warden   -> am_fenrir
-Narrator       -> af_heart
-Unknown        -> am_puck
+Orion / Protagonist -> am_michael
+Alexandra / Alex    -> af_sarah
+Annie               -> bf_lily
+Chang               -> bm_fable
+Dalia               -> af_sky
+Luna                -> af_nova
+Nancy               -> af_nicole
+Nova                -> af_jessica
+Penelope            -> af_heart
 ```
 
-Replace it with your own app's cast map. The SDK pipeline does not know about
-your characters.
+Replace it with your own app's cast map for a different game. The SDK pipeline
+does not know about your characters.
 
 ## Known Limits
 

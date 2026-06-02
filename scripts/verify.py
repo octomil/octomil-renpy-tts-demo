@@ -16,7 +16,7 @@ def main() -> int:
     autorun = app / "Contents" / "Resources" / "autorun"
     py = app / "Contents" / "MacOS" / "python"
     deps = autorun / "lib" / "octomil-deps"
-    runtime_version = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.18")
+    runtime_version = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.19")
     dylib = autorun / "lib" / "octomil-runtime" / runtime_version / "tts" / "lib" / "liboctomil-runtime.dylib"
 
     missing = [str(p) for p in (autorun, py, deps, dylib) if not p.exists()]

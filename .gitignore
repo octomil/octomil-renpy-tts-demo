@@ -10,6 +10,7 @@ media/*.gif
 media/*.webm
 
 # Local app/package backups.
+dist/
 *.bak
 *.backup
 *.tar

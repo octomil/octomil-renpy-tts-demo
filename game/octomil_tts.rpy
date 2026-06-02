@@ -26,7 +26,7 @@ init -10 python:
     OCTOMIL_SERVER_KEY = "local-only-no-cloud"
     OCTOMIL_MODEL = "kokoro-82m"
     OCTOMIL_DEPS = os.path.join(config.basedir, "lib", "octomil-deps")
-    OCTOMIL_RUNTIME_VERSION = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.18")
+    OCTOMIL_RUNTIME_VERSION = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.19")
     OCTOMIL_RUNTIME_DYLIB = os.environ.get(
         "OCTOMIL_RUNTIME_DYLIB",
         os.path.join(

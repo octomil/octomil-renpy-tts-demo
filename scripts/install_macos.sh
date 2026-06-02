@@ -19,15 +19,19 @@ REN_PYTHON="$APP/Contents/MacOS/python"
 SDK_VERSION="${OCTOMIL_SDK_VERSION:-4.17.31}"
 SDK_TAG="v${SDK_VERSION#v}"
 SDK_VERSION="${SDK_TAG#v}"
-RUNTIME_VERSION="${OCTOMIL_RUNTIME_VERSION:-v0.1.18}"
+RUNTIME_VERSION="${OCTOMIL_RUNTIME_VERSION:-v0.1.19}"
 RUNTIME_TAG="v${RUNTIME_VERSION#v}"
 RUNTIME_VERSION="${RUNTIME_TAG}"
 
+VENDOR_DIR="${OCTOMIL_VENDOR_DIR:-$ROOT/vendor}"
+VENDOR_WHEELHOUSE="${OCTOMIL_WHEELHOUSE:-$VENDOR_DIR/wheelhouse}"
 SDK_WHEEL_URL="${OCTOMIL_SDK_WHEEL_URL:-https://github.com/octomil/octomil-python/releases/download/${SDK_TAG}/octomil-${SDK_VERSION}-py3-none-any.whl}"
 RUNTIME_ASSET="liboctomil-runtime-${RUNTIME_VERSION}-tts-darwin-arm64.tar.gz"
 RUNTIME_BASE_URL="${OCTOMIL_RUNTIME_BASE_URL:-https://github.com/octomil/octomil-runtime/releases/download/${RUNTIME_VERSION}}"
 RUNTIME_URL="${OCTOMIL_RUNTIME_URL:-${RUNTIME_BASE_URL}/${RUNTIME_ASSET}}"
 RUNTIME_SHA_URL="${OCTOMIL_RUNTIME_SHA_URL:-${RUNTIME_BASE_URL}/SHA256SUMS}"
+VENDOR_RUNTIME_ARCHIVE="${OCTOMIL_RUNTIME_ARCHIVE:-$VENDOR_DIR/$RUNTIME_ASSET}"
+VENDOR_RUNTIME_CHECKSUMS="${OCTOMIL_RUNTIME_CHECKSUMS:-$VENDOR_DIR/SHA256SUMS}"
 
 DEPS_DIR="$AUTORUN/lib/octomil-deps"
 RUNTIME_DIR="$AUTORUN/lib/octomil-runtime/${RUNTIME_VERSION}/tts"
@@ -168,13 +172,12 @@ detect_target_python() {
     error "Ren'Py embedded Python not found: $REN_PYTHON" 65
   fi
 
-  PY_VERSION_DOT="$("$REN_PYTHON" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-  PY_ABI="$("$REN_PYTHON" -c 'import sys; print(f"cp{sys.version_info.major}{sys.version_info.minor}")')"
-
   if [[ "$(uname -s)" != "Darwin" || "$(uname -m)" != "arm64" ]]; then
     error "This demo installer currently supports Apple Silicon macOS Ren'Py bundles." 70
   fi
 
+  PY_VERSION_DOT="${OCTOMIL_TARGET_PY_VERSION:-3.9}"
+  PY_ABI="${OCTOMIL_TARGET_PY_ABI:-cp${PY_VERSION_DOT/./}}"
   PY_PLATFORM="${OCTOMIL_PIP_PLATFORM:-macosx_11_0_arm64}"
 }
 
@@ -229,17 +232,34 @@ install_sdk_deps() {
   tmp_deps="$TMPDIR_PATH/octomil-deps"
 
   info "Installing Octomil SDK ${SDK_TAG} for Ren'Py Python ${PY_VERSION_DOT} (${PY_PLATFORM}, ${PY_ABI})..."
-  python3 -m pip install \
-    --disable-pip-version-check \
-    --upgrade \
-    --target "$tmp_deps" \
-    --platform "$PY_PLATFORM" \
-    --python-version "$PY_VERSION_DOT" \
-    --implementation cp \
-    --abi "$PY_ABI" \
-    --only-binary=:all: \
-    "$SDK_WHEEL_URL" \
-    cffi
+  if [[ -d "$VENDOR_WHEELHOUSE" ]]; then
+    info "Using bundled wheelhouse: $VENDOR_WHEELHOUSE"
+    python3 -m pip install \
+      --disable-pip-version-check \
+      --upgrade \
+      --target "$tmp_deps" \
+      --platform "$PY_PLATFORM" \
+      --python-version "$PY_VERSION_DOT" \
+      --implementation cp \
+      --abi "$PY_ABI" \
+      --only-binary=:all: \
+      --no-index \
+      --find-links "$VENDOR_WHEELHOUSE" \
+      "octomil==${SDK_VERSION}" \
+      cffi
+  else
+    python3 -m pip install \
+      --disable-pip-version-check \
+      --upgrade \
+      --target "$tmp_deps" \
+      --platform "$PY_PLATFORM" \
+      --python-version "$PY_VERSION_DOT" \
+      --implementation cp \
+      --abi "$PY_ABI" \
+      --only-binary=:all: \
+      "$SDK_WHEEL_URL" \
+      cffi
+  fi
 
   if [[ -d "$DEPS_DIR" ]]; then
     local backup
@@ -266,10 +286,24 @@ install_runtime() {
   checksums="$TMPDIR_PATH/SHA256SUMS"
   extracted="$TMPDIR_PATH/runtime"
 
-  info "Downloading Octomil runtime ${RUNTIME_VERSION} tts/darwin-arm64..."
-  download_runtime_release_asset "$RUNTIME_ASSET" "$archive"
-  download_runtime_release_asset "SHA256SUMS" "$checksums"
-  verify_checksum "$checksums" "$archive"
+  if [[ -f "$VENDOR_RUNTIME_ARCHIVE" ]]; then
+    info "Using bundled Octomil runtime: $VENDOR_RUNTIME_ARCHIVE"
+    cp "$VENDOR_RUNTIME_ARCHIVE" "$archive"
+    if [[ -f "$VENDOR_RUNTIME_CHECKSUMS" ]]; then
+      cp "$VENDOR_RUNTIME_CHECKSUMS" "$checksums"
+      verify_checksum "$checksums" "$archive"
+    elif [[ -f "${VENDOR_RUNTIME_ARCHIVE}.sha256" ]]; then
+      cp "${VENDOR_RUNTIME_ARCHIVE}.sha256" "$checksums"
+      verify_checksum "$checksums" "$archive"
+    else
+      warn "Bundled runtime has no checksum file; skipping checksum verification."
+    fi
+  else
+    info "Downloading Octomil runtime ${RUNTIME_VERSION} tts/darwin-arm64..."
+    download_runtime_release_asset "$RUNTIME_ASSET" "$archive"
+    download_runtime_release_asset "SHA256SUMS" "$checksums"
+    verify_checksum "$checksums" "$archive"
+  fi
 
   mkdir -p "$extracted"
   tar -xzf "$archive" -C "$extracted"
@@ -305,7 +339,7 @@ main() {
 
   if [[ "$RUNTIME_VERSION" == "v0.1.18" ]]; then
     warn "v0.1.18 is the public TTS runtime but predates the macOS QoS latency fix."
-    warn "Use OCTOMIL_RUNTIME_VERSION=v0.1.19 or newer once that runtime release exists."
+    warn "Use OCTOMIL_RUNTIME_VERSION=v0.1.19 or newer for embedded Ren'Py hosts."
   fi
 
   echo

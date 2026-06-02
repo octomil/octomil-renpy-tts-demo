@@ -39,18 +39,25 @@ GitHub Release asset and link it here once available:
 - Apple Silicon macOS Ren'Py app bundle.
 - Host `python3` with `pip`, used only to stage target-platform wheels.
 - Octomil Python SDK `v4.17.31` or newer.
-- Octomil native runtime `tts` flavor.
+- Octomil native runtime `v0.1.19` `tts` flavor or newer.
 
 `v4.17.31` includes the reusable `octomil.integrations.local_tts` pipeline used
-by this demo. The current runtime `v0.1.18` has the `tts` flavor and Kokoro
-support, but predates the macOS QoS latency fix. Use `v0.1.19` or newer once
-that runtime release is available.
+by this demo. Runtime `v0.1.19` includes native Kokoro support and the macOS QoS
+fix needed for embedded hosts such as Ren'Py.
 
-If the runtime release is still private, export `GITHUB_TOKEN` or `GH_TOKEN`
-with access to `octomil/octomil-runtime` before running the installer. For a
-fully public demo, the runtime release asset must be publicly downloadable too.
+The GitHub Release zip is self-contained: it includes a target-platform SDK
+wheelhouse and the native runtime archive under `vendor/`, so installation does
+not need network access.
 
 ## Install Into A Local App Bundle
+
+Download and unzip the latest release asset:
+
+```text
+octomil-renpy-tts-demo-v0.1.0-macos-arm64.zip
+```
+
+Then run:
 
 ```bash
 ./scripts/install_macos.sh /Applications/MyRenPyGame.app
@@ -63,6 +70,10 @@ The installer:
 - installs Octomil SDK deps into `Contents/Resources/autorun/lib/octomil-deps`,
 - installs the native TTS runtime into `Contents/Resources/autorun/lib/octomil-runtime/<version>/tts`,
 - copies the Ren'Py script and example voice map into the app.
+
+If you are using a source checkout instead of the release zip, the same
+installer downloads the SDK wheel and runtime release asset unless you provide a
+local `vendor/` directory.
 
 Version overrides:
 
@@ -78,8 +89,7 @@ Then verify:
 ./scripts/verify.py /Applications/MyRenPyGame.app
 ```
 
-If you installed a runtime version other than `v0.1.18`, pass the same version
-to the verifier:
+If you override the runtime version, pass the same version to the verifier:
 
 ```bash
 OCTOMIL_RUNTIME_VERSION=v0.1.19 ./scripts/verify.py /Applications/MyRenPyGame.app
@@ -140,6 +150,7 @@ your characters.
 ## Publishing Checklist
 
 1. Upload the demo `.mov` as a GitHub Release asset.
-2. Merge and release the runtime macOS QoS latency fix.
-3. Set `OCTOMIL_RUNTIME_VERSION` in docs/examples to that released runtime.
+2. Run `scripts/package_release.sh`.
+3. Upload `dist/octomil-renpy-tts-demo-<version>-macos-arm64.zip` and its
+   `.sha256` file as GitHub Release assets.
 4. Run the installer and verifier against a clean Ren'Py app bundle.

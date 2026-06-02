@@ -10,9 +10,10 @@ assets, cached audio, proprietary scripts, or a production cast map.
 
 - [Download the self-contained macOS arm64 demo package](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1.0/octomil-renpy-tts-demo-v0.1.0-macos-arm64.zip)
 - [Checksum](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1.0/octomil-renpy-tts-demo-v0.1.0-macos-arm64.zip.sha256)
+- [Watch/download the screen recording](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1.0/renpy-octomil-tts-demo.mov)
 
-The screen recording is intentionally not committed to git. Attach it to the
-same GitHub Release when a local copy is available.
+The screen recording is published as a GitHub Release asset rather than
+committed to git.
 
 ## What It Does
 

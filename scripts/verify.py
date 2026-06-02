@@ -18,8 +18,9 @@ def main() -> int:
     deps = autorun / "lib" / "octomil-deps"
     runtime_version = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.19")
     dylib = autorun / "lib" / "octomil-runtime" / runtime_version / "tts" / "lib" / "liboctomil-runtime.dylib"
+    model = autorun / "lib" / "octomil-models" / "kokoro-82m" / "model.onnx"
 
-    missing = [str(p) for p in (autorun, py, deps, dylib) if not p.exists()]
+    missing = [str(p) for p in (autorun, py, deps, dylib, model) if not p.exists()]
     if missing:
         print("Missing required paths:", file=sys.stderr)
         for path in missing:
@@ -32,6 +33,7 @@ def main() -> int:
         sys.path.insert(0, {str(deps)!r})
         os.environ.setdefault("OCTOMIL_RUNTIME_DYLIB", {str(dylib)!r})
         os.environ.setdefault("OCTOMIL_RUNTIME_FLAVOR", "tts")
+        os.environ.setdefault("OCTOMIL_SHERPA_TTS_MODEL", {str(model)!r})
         os.environ.setdefault("OCTOMIL_SHERPA_PROVIDER", "cpu")
         os.environ.setdefault("OCTOMIL_ORG_ID", "renpy-local-verify")
         os.environ.setdefault("OCTOMIL_SERVER_KEY", "local-only-no-cloud")

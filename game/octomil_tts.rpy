@@ -35,6 +35,13 @@ init -10 python:
             "liboctomil-runtime.dylib",
         ),
     )
+    OCTOMIL_KOKORO_MODEL = os.environ.get(
+        "OCTOMIL_SHERPA_TTS_MODEL",
+        os.path.join(
+            config.basedir,
+            "lib", "octomil-models", "kokoro-82m", "model.onnx",
+        ),
+    )
 
     DEFAULT_VOICE = "af_bella"
     VOICE_MAP_PATH = os.path.join(config.gamedir, "octomil_voice_map.json")
@@ -65,6 +72,8 @@ init -10 python:
     os.environ.setdefault("OCTOMIL_RUNTIME_DYLIB", OCTOMIL_RUNTIME_DYLIB)
     os.environ.setdefault("OCTOMIL_RUNTIME_FLAVOR", "tts")
     os.environ.setdefault("OCTOMIL_SHERPA_PROVIDER", "cpu")
+    if os.path.isfile(OCTOMIL_KOKORO_MODEL):
+        os.environ.setdefault("OCTOMIL_SHERPA_TTS_MODEL", OCTOMIL_KOKORO_MODEL)
 
     _SYSCONFIG_SHIM = {
         "get_config_var": lambda n: None,

@@ -32,11 +32,16 @@ RUNTIME_URL="${OCTOMIL_RUNTIME_URL:-${RUNTIME_BASE_URL}/${RUNTIME_ASSET}}"
 RUNTIME_SHA_URL="${OCTOMIL_RUNTIME_SHA_URL:-${RUNTIME_BASE_URL}/SHA256SUMS}"
 VENDOR_RUNTIME_ARCHIVE="${OCTOMIL_RUNTIME_ARCHIVE:-$VENDOR_DIR/$RUNTIME_ASSET}"
 VENDOR_RUNTIME_CHECKSUMS="${OCTOMIL_RUNTIME_CHECKSUMS:-$VENDOR_DIR/SHA256SUMS}"
+KOKORO_ASSET="${OCTOMIL_KOKORO_ASSET:-kokoro-multi-lang-v1_0.tar.bz2}"
+KOKORO_URL="${OCTOMIL_KOKORO_URL:-https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${KOKORO_ASSET}}"
+VENDOR_KOKORO_ARCHIVE="${OCTOMIL_KOKORO_ARCHIVE:-$VENDOR_DIR/$KOKORO_ASSET}"
 
 DEPS_DIR="$AUTORUN/lib/octomil-deps"
 RUNTIME_DIR="$AUTORUN/lib/octomil-runtime/${RUNTIME_VERSION}/tts"
 RUNTIME_LIB_DIR="$RUNTIME_DIR/lib"
 RUNTIME_DYLIB="$RUNTIME_LIB_DIR/liboctomil-runtime.dylib"
+MODEL_DIR="$AUTORUN/lib/octomil-models/kokoro-82m"
+MODEL_ONNX="$MODEL_DIR/model.onnx"
 
 info() {
   printf '\033[1;34m==>\033[0m %s\n' "$1"
@@ -327,6 +332,48 @@ install_runtime() {
   info "Installed runtime dylib: $RUNTIME_DYLIB"
 }
 
+install_kokoro_model() {
+  if [[ "${OCTOMIL_SKIP_MODEL_INSTALL:-0}" == "1" ]]; then
+    warn "Skipping Kokoro model install because OCTOMIL_SKIP_MODEL_INSTALL=1."
+    return
+  fi
+
+  local archive
+  local extracted
+  archive="$TMPDIR_PATH/$KOKORO_ASSET"
+  extracted="$TMPDIR_PATH/kokoro"
+
+  if [[ -f "$VENDOR_KOKORO_ARCHIVE" ]]; then
+    info "Using bundled Kokoro model: $VENDOR_KOKORO_ARCHIVE"
+    cp "$VENDOR_KOKORO_ARCHIVE" "$archive"
+  else
+    info "Downloading Kokoro model archive..."
+    download "$KOKORO_URL" "$archive"
+  fi
+
+  mkdir -p "$extracted"
+  tar -xjf "$archive" -C "$extracted"
+
+  local source_dir
+  source_dir="$(find "$extracted" -type f -name 'model.onnx' -path '*kokoro-multi-lang-v1_0*' -print -quit)"
+  if [[ -z "$source_dir" ]]; then
+    error "Kokoro archive did not contain kokoro-multi-lang-v1_0/model.onnx." 66
+  fi
+  source_dir="$(dirname "$source_dir")"
+
+  if [[ -d "$MODEL_DIR" ]]; then
+    local backup
+    backup="$(backup_path "$MODEL_DIR")"
+    mv "$MODEL_DIR" "$backup"
+    info "Backed up existing Kokoro model: $backup"
+  fi
+
+  mkdir -p "$MODEL_DIR"
+  cp -Rp "$source_dir/." "$MODEL_DIR/"
+  printf 'kokoro-multi-lang-v1_0\n' > "$MODEL_DIR/VERSION"
+  info "Installed Kokoro model: $MODEL_ONNX"
+}
+
 main() {
   TMPDIR_PATH="$(mktemp -d)"
   trap 'rm -rf "$TMPDIR_PATH"' EXIT
@@ -335,6 +382,7 @@ main() {
   detect_target_python
   install_sdk_deps
   install_runtime
+  install_kokoro_model
   install_game_files
 
   if [[ "$RUNTIME_VERSION" == "v0.1.18" ]]; then
@@ -346,6 +394,8 @@ main() {
   echo "Installed Octomil Ren'Py local TTS."
   echo "Runtime dylib:"
   echo "  $RUNTIME_DYLIB"
+  echo "Kokoro model:"
+  echo "  $MODEL_ONNX"
   echo
   echo "Verify:"
   echo "  $ROOT/scripts/verify.py \"$APP\""

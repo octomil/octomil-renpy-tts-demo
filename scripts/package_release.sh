@@ -18,6 +18,8 @@ PY_PLATFORM="${OCTOMIL_PIP_PLATFORM:-macosx_11_0_arm64}"
 RUNTIME_ASSET="liboctomil-runtime-${RUNTIME_VERSION}-tts-darwin-arm64.tar.gz"
 SDK_WHEEL_URL="${OCTOMIL_SDK_WHEEL_URL:-https://github.com/octomil/octomil-python/releases/download/${SDK_TAG}/octomil-${SDK_VERSION}-py3-none-any.whl}"
 RUNTIME_URL="${OCTOMIL_RUNTIME_URL:-https://github.com/octomil/octomil-runtime/releases/download/${RUNTIME_VERSION}/${RUNTIME_ASSET}}"
+KOKORO_ASSET="${OCTOMIL_KOKORO_ASSET:-kokoro-multi-lang-v1_0.tar.bz2}"
+KOKORO_URL="${OCTOMIL_KOKORO_URL:-https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${KOKORO_ASSET}}"
 
 DIST="$ROOT/dist"
 WORK="$DIST/work"
@@ -61,6 +63,21 @@ runtime_source() {
   printf '%s\n' ""
 }
 
+download_runtime_archive() {
+  local dest="$1"
+
+  if command -v gh >/dev/null 2>&1; then
+    gh release download "$RUNTIME_VERSION" \
+      --repo octomil/octomil-runtime \
+      --pattern "$RUNTIME_ASSET" \
+      --dir "$(dirname "$dest")" \
+      --clobber
+    return
+  fi
+
+  download "$RUNTIME_URL" "$dest"
+}
+
 rm -rf "$WORK"
 mkdir -p "$PACKAGE_DIR/vendor/wheelhouse" "$DIST"
 
@@ -89,13 +106,21 @@ if [[ -n "$source_archive" ]]; then
   info "Using local runtime archive: $source_archive"
   cp "$source_archive" "$PACKAGE_DIR/vendor/$RUNTIME_ASSET"
 else
-  info "Downloading runtime archive: $RUNTIME_URL"
-  download "$RUNTIME_URL" "$PACKAGE_DIR/vendor/$RUNTIME_ASSET"
+  info "Downloading runtime archive: $RUNTIME_ASSET"
+  download_runtime_archive "$PACKAGE_DIR/vendor/$RUNTIME_ASSET"
+fi
+
+if [[ -n "${OCTOMIL_KOKORO_ARCHIVE:-}" ]]; then
+  info "Using local Kokoro archive: $OCTOMIL_KOKORO_ARCHIVE"
+  cp "$OCTOMIL_KOKORO_ARCHIVE" "$PACKAGE_DIR/vendor/$KOKORO_ASSET"
+else
+  info "Downloading Kokoro model archive: $KOKORO_URL"
+  download "$KOKORO_URL" "$PACKAGE_DIR/vendor/$KOKORO_ASSET"
 fi
 
 (
   cd "$PACKAGE_DIR/vendor"
-  shasum -a 256 "$RUNTIME_ASSET" > SHA256SUMS
+  shasum -a 256 "$RUNTIME_ASSET" "$KOKORO_ASSET" > SHA256SUMS
 )
 
 info "Writing package manifest..."
@@ -106,6 +131,7 @@ This package is self-contained for Apple Silicon macOS Ren'Py bundles:
 
 - Octomil SDK ${SDK_TAG} wheelhouse for CPython ${PY_VERSION_DOT} arm64
 - Octomil runtime ${RUNTIME_VERSION} tts/darwin-arm64 dylib archive
+- Kokoro 82M v1.0 model archive
 - Ren'Py drop-in script and example voice map
 
 Install:

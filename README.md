@@ -45,8 +45,8 @@ by this demo. Runtime `v0.1.19` includes native Kokoro support and the macOS QoS
 fix needed for embedded hosts such as Ren'Py.
 
 The GitHub Release zip is self-contained: it includes a target-platform SDK
-wheelhouse and the native runtime archive under `vendor/`, so installation does
-not need network access.
+wheelhouse, the native runtime archive, and the Kokoro model archive under
+`vendor/`, so installation and first local synthesis do not need network access.
 
 ## Install Into A Local App Bundle
 
@@ -68,6 +68,7 @@ The installer:
 - backs up any existing `game/octomil_voice_map.json`,
 - installs Octomil SDK deps into `Contents/Resources/autorun/lib/octomil-deps`,
 - installs the native TTS runtime into `Contents/Resources/autorun/lib/octomil-runtime/<version>/tts`,
+- installs Kokoro into `Contents/Resources/autorun/lib/octomil-models/kokoro-82m`,
 - copies the Ren'Py script and example voice map into the app.
 
 If you are using a source checkout instead of the release zip, the same

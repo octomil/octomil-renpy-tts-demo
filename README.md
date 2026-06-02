@@ -1,16 +1,10 @@
 # Octomil Ren'Py Local TTS Demo
 
-Drop-in local TTS for a Ren'Py visual novel using Octomil, Kokoro 82M, and the
-native Octomil runtime.
+Drop-in local text-to-speech for a Ren'Py visual novel using Octomil, Kokoro
+82M, and the native Octomil runtime.
 
-This repository packages the integration work in a way another developer can
-pick up without reading the original debugging thread. Eternum is used as the
-worked example because it has a large cast and exposed the hard parts: embedded
-Python 3.9, native runtime bundling, cold-start latency, per-line caching, and
-many-character voice mapping.
-
-This project does not include game assets, cached audio, proprietary content,
-or the game itself. It is not affiliated with the game developer.
+This repository is a small integration template. It does not include game
+assets, cached audio, proprietary scripts, or a production cast map.
 
 ## Demo
 
@@ -18,7 +12,7 @@ The full screen recording is intentionally not committed to git. Upload it as a
 GitHub Release asset and link it here once available:
 
 ```md
-[Watch the demo](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1-demo/eternum-octomil-tts-demo.mov)
+[Watch the demo](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1-demo/renpy-octomil-tts-demo.mov)
 ```
 
 ## What It Does
@@ -27,56 +21,68 @@ GitHub Release asset and link it here once available:
 - Runs local-only Kokoro TTS through the native Octomil runtime.
 - Uses no cloud key and makes no server call for local inference.
 - Prewarms the model on a background thread before dialogue needs audio.
-- Streams generated audio into Ren'Py's voice channel.
+- Plays generated audio into Ren'Py's configured sound channel.
 - Caches generated WAVs by `voice + text`, so repeated lines play instantly.
-- Maps VNDB's 116 Eternum characters to supported Kokoro voices and aliases.
+- Prefetches upcoming dialogue and prunes stale work when the player advances.
 
 ## Files
 
 - [game/octomil_tts.rpy](game/octomil_tts.rpy): thin drop-in Ren'Py script.
-- [game/octomil_voice_map.json](game/octomil_voice_map.json): app-owned character/tag voice map.
-- [scripts/install_macos.sh](scripts/install_macos.sh): copies the script into a macOS Ren'Py app bundle.
+- [game/octomil_voice_map.json](game/octomil_voice_map.json): neutral example speaker/tag voice map.
+- [scripts/install_macos.sh](scripts/install_macos.sh): installs the script, SDK deps, and runtime into a macOS Ren'Py app bundle.
 - [scripts/verify.py](scripts/verify.py): verifies SDK/runtime/native Kokoro synthesis from an installed bundle.
-- [data/voice_map_aliases.json](data/voice_map_aliases.json): generated alias-to-voice table.
-- [data/vndb_voice_audit.json](data/vndb_voice_audit.json): generated VNDB character audit.
 - [docs/architecture.md](docs/architecture.md): integration architecture.
-- [docs/performance.md](docs/performance.md): latency notes and before/after numbers.
+- [docs/performance.md](docs/performance.md): latency notes and realistic targets.
 
 ## Requirements
 
-- macOS Ren'Py app bundle.
-- Apple Silicon is the tested target.
-- Octomil Python SDK with:
-  - keyless local client support,
-  - Python 3.9-safe generated types,
-  - native Kokoro routing.
-  - `octomil.integrations.local_tts`.
-- Octomil native runtime with:
-  - `tts` flavor,
-  - Kokoro support,
-  - native TTS latency/prewarm fixes.
+- Apple Silicon macOS Ren'Py app bundle.
+- Host `python3` with `pip`, used only to stage target-platform wheels.
+- Octomil Python SDK `v4.17.31` or newer.
+- Octomil native runtime `tts` flavor.
 
-For the current internal validation build, the app bundle uses:
+`v4.17.31` includes the reusable `octomil.integrations.local_tts` pipeline used
+by this demo. The current runtime `v0.1.18` has the `tts` flavor and Kokoro
+support, but predates the macOS QoS latency fix. Use `v0.1.19` or newer once
+that runtime release is available.
 
-```text
-Contents/Resources/autorun/lib/octomil-deps/
-Contents/Resources/autorun/lib/octomil-runtime/pr100/tts/lib/liboctomil-runtime.dylib
-```
+If the runtime release is still private, export `GITHUB_TOKEN` or `GH_TOKEN`
+with access to `octomil/octomil-runtime` before running the installer. For a
+fully public demo, the runtime release asset must be publicly downloadable too.
 
 ## Install Into A Local App Bundle
 
 ```bash
-./scripts/install_macos.sh /Applications/Eternum-tts.app
+./scripts/install_macos.sh /Applications/MyRenPyGame.app
 ```
 
-The script backs up an existing `game/octomil_tts.rpy` and copies in the drop-in
-script. It does not copy or download the SDK/runtime; those must already be
-present in the app bundle or installed by your packaging flow.
+The installer:
+
+- backs up any existing `game/octomil_tts.rpy`,
+- backs up any existing `game/octomil_voice_map.json`,
+- installs Octomil SDK deps into `Contents/Resources/autorun/lib/octomil-deps`,
+- installs the native TTS runtime into `Contents/Resources/autorun/lib/octomil-runtime/<version>/tts`,
+- copies the Ren'Py script and example voice map into the app.
+
+Version overrides:
+
+```bash
+OCTOMIL_SDK_VERSION=4.17.31 \
+OCTOMIL_RUNTIME_VERSION=v0.1.19 \
+./scripts/install_macos.sh /Applications/MyRenPyGame.app
+```
 
 Then verify:
 
 ```bash
-./scripts/verify.py /Applications/Eternum-tts.app
+./scripts/verify.py /Applications/MyRenPyGame.app
+```
+
+If you installed a runtime version other than `v0.1.18`, pass the same version
+to the verifier:
+
+```bash
+OCTOMIL_RUNTIME_VERSION=v0.1.19 ./scripts/verify.py /Applications/MyRenPyGame.app
 ```
 
 ## What Lives Where
@@ -103,50 +109,37 @@ The voice map is app content and intentionally lives in
 
 ## Voice Mapping
 
-Kokoro 82M exposes 53 voices. Eternum has 116 VNDB-listed characters. The map
-therefore treats Kokoro voices as archetypes rather than one unique voice per
+Kokoro 82M exposes 53 voices. Most visual novels have more characters than that,
+so this demo treats Kokoro voices as archetypes rather than one unique voice per
 character.
 
-The current map:
-
-- pins all 116 VNDB characters by full name,
-- pins known Ren'Py short tags such as `mc`, `x`, `a`, `d`, `no`, `cha`, `ma`,
-- normalizes punctuation and spacing for names such as `Mr. Hernandez`,
-- validates that no mapped voice is unsupported,
-- validates that VNDB male/female markers do not map to the opposite voice
-  gender unless explicitly overridden.
-
-Example mappings:
+The included map is intentionally tiny and neutral:
 
 ```text
-Orion Richards          -> am_michael
-Alexandra Bardot        -> af_sarah
-Annie Winters           -> bf_lily
-Chang Wong              -> bm_fable
-Dalia Carter            -> af_sky
-Luna Hernandez          -> af_nova
-Nancy Carter            -> af_nicole
-Nova Johnson            -> af_jessica
-Penelope Paige Carter   -> af_heart
-Axel Bardot             -> am_fenrir
-Victor Hernandez        -> em_alex
-Praetorian              -> hf_beta
+Alice Beaumont -> af_bella
+Ben Harper     -> bm_fable
+Cora Ames      -> af_sky
+Darius Quinn   -> am_michael
+Elena Cross    -> bf_lily
+Frank Warden   -> am_fenrir
+Narrator       -> af_heart
+Unknown        -> am_puck
 ```
+
+Replace it with your own app's cast map. The SDK pipeline does not know about
+your characters.
 
 ## Known Limits
 
 - True process-cold Kokoro startup is multi-second because the model is large.
 - The practical first-line path is background prewarm plus prefetch/cache.
-- 53 voices cannot create 116 genuinely unique character performances.
+- 53 voices cannot create a large cast of genuinely unique performances.
 - For premium main-cast quality, use a baked/offline voice pipeline and keep
   Kokoro as the local fallback.
 
 ## Publishing Checklist
 
-1. Create a public repo, preferably `octomil-renpy-tts-demo`.
-2. Commit source/docs/scripts only.
-3. Upload the demo `.mov` as a GitHub Release asset.
-4. Replace the local demo path in this README with the release URL.
-5. Confirm runtime/SDK release versions are public and installable.
-6. Add a short disclaimer that the integration is unofficial and ships no game
-   assets.
+1. Upload the demo `.mov` as a GitHub Release asset.
+2. Merge and release the runtime macOS QoS latency fix.
+3. Set `OCTOMIL_RUNTIME_VERSION` in docs/examples to that released runtime.
+4. Run the installer and verifier against a clean Ren'Py app bundle.

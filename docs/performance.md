@@ -1,54 +1,42 @@
 # Performance Notes
 
-These numbers came from the macOS Ren'Py/Eternum validation bundle and native
-Kokoro runtime work.
+Kokoro 82M is small enough to run locally, but it is still a real neural TTS
+model. A good Ren'Py integration should hide model startup and keep live
+synthesis as the fallback path.
 
-## Before Runtime Fixes
+## Targets
 
-Native streaming inside Ren'Py could take tens of seconds for a single fresh
-line:
+Ideal playback target:
 
-```text
-setup=9956ms eng_ttfb=35003ms total=44960ms
+- cached line: immediate,
+- prefetched line: immediate,
+- warmed fresh line: roughly sub-second to low-single-digit seconds depending
+  on host and text length,
+- true process-cold first line: multi-second.
+
+True process-cold sub-500ms Kokoro generation is not realistic. To make the
+first visible line feel fast, warm the model before gameplay and prefetch known
+dialogue.
+
+## Runtime Fixes Needed
+
+The current public `v0.1.18` TTS runtime has the public `tts` flavor and Kokoro
+support, but predates the macOS QoS latency fix. In GUI hosts, that older
+runtime can be scheduled poorly under render-loop contention.
+
+Use the first runtime release after the QoS fix once it exists, then set:
+
+```bash
+OCTOMIL_RUNTIME_VERSION=v0.1.19 ./scripts/install_macos.sh /Applications/MyRenPyGame.app
 ```
 
-Standalone synthesis was much faster, which pointed to embedded-host scheduling
-and runtime overhead rather than raw model speed alone.
+## Practical Pattern
 
-## Runtime Fixes
+1. Install the SDK/runtime into the app bundle.
+2. Warm Kokoro during a splash screen, settings screen, or first idle moment.
+3. Prefetch the next few dialogue lines.
+4. Cancel/prune stale speculative work when the player advances quickly.
+5. Let cache hits play immediately.
 
-The native runtime fix set addressed:
-
-- macOS QoS for TTS stream and batch worker threads,
-- TTS thread count no longer pinned to one worker,
-- file digest caching for the 326 MB Kokoro model,
-- process-global warmed `OfflineTts` engine reuse,
-- real TTS prewarm during `oct_model_warm`.
-
-## After Runtime Fixes
-
-Without explicit warmup:
-
-```text
-first speech.create: ~4.3s
-later speech.create: ~0.9s
-speech.stream: ~0.66-1.0s
-```
-
-With explicit SDK/app warmup:
-
-```text
-warmup: ~4.8s
-first visible speech.create after warmup: ~0.89s
-speech.stream after warmup: ~0.68-1.0s
-```
-
-## Practical Target
-
-True process-cold sub-500ms Kokoro generation is not realistic. The useful
-target is:
-
-- warm before the first visible line,
-- cache known lines,
-- prefetch upcoming lines,
-- keep live synthesis as the fallback path.
+For premium main-cast quality, generate/bake those lines offline and keep
+Kokoro as the local fallback for dynamic or unbaked text.

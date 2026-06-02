@@ -8,5 +8,5 @@ them from the root README.
 Suggested release asset name:
 
 ```text
-eternum-octomil-tts-demo.mov
+renpy-octomil-tts-demo.mov
 ```

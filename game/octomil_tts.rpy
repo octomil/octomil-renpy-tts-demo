@@ -22,14 +22,18 @@ init -10 python:
     import sys
     import sysconfig as _sc
 
-    OCTOMIL_ORG_ID = "eternum-tts-local"
+    OCTOMIL_ORG_ID = "renpy-local-tts"
     OCTOMIL_SERVER_KEY = "local-only-no-cloud"
     OCTOMIL_MODEL = "kokoro-82m"
     OCTOMIL_DEPS = os.path.join(config.basedir, "lib", "octomil-deps")
-    OCTOMIL_RUNTIME_DYLIB = os.path.join(
-        config.basedir,
-        "lib", "octomil-runtime", "pr100", "tts", "lib",
-        "liboctomil-runtime.dylib",
+    OCTOMIL_RUNTIME_VERSION = os.environ.get("OCTOMIL_RUNTIME_VERSION", "v0.1.18")
+    OCTOMIL_RUNTIME_DYLIB = os.environ.get(
+        "OCTOMIL_RUNTIME_DYLIB",
+        os.path.join(
+            config.basedir,
+            "lib", "octomil-runtime", OCTOMIL_RUNTIME_VERSION, "tts", "lib",
+            "liboctomil-runtime.dylib",
+        ),
     )
 
     DEFAULT_VOICE = "af_bella"

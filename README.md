@@ -6,14 +6,13 @@ Drop-in local text-to-speech for a Ren'Py visual novel using Octomil, Kokoro
 This repository is a small integration template. It does not include game
 assets, cached audio, proprietary scripts, or a production cast map.
 
-## Demo
+## Download
 
-The full screen recording is intentionally not committed to git. Upload it as a
-GitHub Release asset and link it here once available:
+- [Download the self-contained macOS arm64 demo package](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1.0/octomil-renpy-tts-demo-v0.1.0-macos-arm64.zip)
+- [Checksum](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1.0/octomil-renpy-tts-demo-v0.1.0-macos-arm64.zip.sha256)
 
-```md
-[Watch the demo](https://github.com/octomil/octomil-renpy-tts-demo/releases/download/v0.1-demo/renpy-octomil-tts-demo.mov)
-```
+The screen recording is intentionally not committed to git. Attach it to the
+same GitHub Release when a local copy is available.
 
 ## What It Does
 

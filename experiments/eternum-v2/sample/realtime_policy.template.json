@@ -1,0 +1,48 @@
+{
+  "expressive_realtime": {
+    "compile_controls": [
+      "style_prompt",
+      "emotion",
+      "intensity",
+      "voice_profile"
+    ],
+    "model": "unselected",
+    "required_voice_profiles": [
+      "alex_v2",
+      "annie_v2",
+      "dalia_v2",
+      "luna_v2",
+      "nancy_v2",
+      "nova_v2",
+      "penelope_v2"
+    ],
+    "route": "local_first"
+  },
+  "fallbacks": {
+    "baked_missing": "expressive_realtime",
+    "expressive_realtime_unavailable": "kokoro_realtime",
+    "foreground_budget_exceeded": "kokoro_realtime"
+  },
+  "kokoro_realtime": {
+    "compile_controls": [
+      "voice",
+      "speed",
+      "punctuation"
+    ],
+    "model": "kokoro-82m",
+    "route": "local_first"
+  },
+  "latency_budget_ms": {
+    "cache_hit": 50,
+    "fallback": 1800,
+    "foreground": 1200,
+    "prefetch": 250
+  },
+  "routes": [
+    "baked_approved",
+    "live_cache",
+    "expressive_realtime",
+    "kokoro_realtime"
+  ],
+  "version": 1
+}

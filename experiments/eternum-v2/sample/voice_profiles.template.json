@@ -1,0 +1,61 @@
+{
+  "profiles": {
+    "alex_v2": {
+      "default_energy": "bright",
+      "default_pace": "normal",
+      "fallback_voice": "af_sarah",
+      "reference_prompt": "assets/voice_prompts/alex_v2.wav",
+      "speaker": "Alex",
+      "style": "Alex: restrained, playful, bright energy"
+    },
+    "annie_v2": {
+      "default_energy": "restrained",
+      "default_pace": "slow",
+      "fallback_voice": "bf_lily",
+      "reference_prompt": "assets/voice_prompts/annie_v2.wav",
+      "speaker": "Annie",
+      "style": "Annie: clear but controlled, guarded, soft volume"
+    },
+    "dalia_v2": {
+      "default_energy": "restrained",
+      "default_pace": "slow",
+      "fallback_voice": "af_sky",
+      "reference_prompt": "assets/voice_prompts/dalia_v2.wav",
+      "speaker": "Dalia",
+      "style": "Dalia: clear but controlled, softened, slow pace"
+    },
+    "luna_v2": {
+      "default_energy": "restrained",
+      "default_pace": "slow",
+      "fallback_voice": "af_nova",
+      "reference_prompt": "assets/voice_prompts/luna_v2.wav",
+      "speaker": "Luna",
+      "style": "Luna: clear but controlled, guarded, soft volume"
+    },
+    "nancy_v2": {
+      "default_energy": "intense",
+      "default_pace": "quick",
+      "fallback_voice": "af_nicole",
+      "reference_prompt": "assets/voice_prompts/nancy_v2.wav",
+      "speaker": "Nancy",
+      "style": "Nancy: clear but controlled, tense, quick pace"
+    },
+    "nova_v2": {
+      "default_energy": "intense",
+      "default_pace": "quick",
+      "fallback_voice": "af_jessica",
+      "reference_prompt": "assets/voice_prompts/nova_v2.wav",
+      "speaker": "Nova",
+      "style": "Nova: strong, tense, quick pace"
+    },
+    "penelope_v2": {
+      "default_energy": "bright",
+      "default_pace": "normal",
+      "fallback_voice": "af_heart",
+      "reference_prompt": "assets/voice_prompts/penelope_v2.wav",
+      "speaker": "Penelope",
+      "style": "Penelope: restrained, playful, bright energy"
+    }
+  },
+  "version": 1
+}

@@ -150,6 +150,37 @@ does not know about your characters.
 - For premium main-cast quality, use a baked/offline voice pipeline and keep
   Kokoro as the local fallback.
 
+## Eternum v2 Emotional TTS Experiment
+
+The v2 experiment keeps Kokoro as the embedded real-time fallback and adds a
+shared emotional performance packet for both live synthesis and optional offline
+bakes:
+
+```bash
+./scripts/eternum_v2_experiment.py /path/to/game --out experiments/eternum-v2/real-run
+```
+
+With no input path, the script runs against the bundled fixture and writes a
+sample packet under `experiments/eternum-v2/sample`. See
+[docs/eternum-v2-emotional-tts.md](docs/eternum-v2-emotional-tts.md) for the
+pipeline and review criteria.
+
+After installing the local SDK/runtime environment, generate Kokoro baseline
+WAVs for the packet:
+
+```bash
+./scripts/eternum_v2_generate_kokoro_baseline.py experiments/eternum-v2/sample
+```
+
+These baseline WAVs are a control group, not the emotional v2 result. Kokoro
+can honor the fallback voice and a coarse speed setting, but the richer
+`emotion`, `intensity`, and `delivery` fields are for the real-time expressive
+compiler and optional bake worker.
+
+The generated `realtime_policy.template.json` defines the live route order,
+latency budgets, and fallbacks. The baked manifest is optional; dynamic or
+unbaked lines still route through real-time synthesis.
+
 ## Publishing Checklist
 
 1. Upload the demo `.mov` as a GitHub Release asset.

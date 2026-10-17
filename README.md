@@ -84,6 +84,14 @@ OCTOMIL_RUNTIME_VERSION=v0.1.19 \
 ./scripts/install_macos.sh /Applications/MyRenPyGame.app
 ```
 
+Downloaded artifacts are checksum-verified and the scripts fail closed without
+a pinned hash. Set `OCTOMIL_SDK_WHEEL_SHA256`, `OCTOMIL_RUNTIME_SHA256`, and
+`OCTOMIL_KOKORO_SHA256` to the expected sha256 of each artifact (required by
+`package_release.sh`; required by `install_macos.sh` for anything it downloads).
+For fully hash-locked dependencies, set `OCTOMIL_SDK_REQUIREMENTS` to a
+`--require-hashes` requirements file covering `octomil`, `cffi`, and their
+transitive deps.
+
 Then verify:
 
 ```bash

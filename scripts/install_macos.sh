@@ -36,6 +36,12 @@ KOKORO_ASSET="${OCTOMIL_KOKORO_ASSET:-kokoro-multi-lang-v1_0.tar.bz2}"
 KOKORO_URL="${OCTOMIL_KOKORO_URL:-https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${KOKORO_ASSET}}"
 VENDOR_KOKORO_ARCHIVE="${OCTOMIL_KOKORO_ARCHIVE:-$VENDOR_DIR/$KOKORO_ASSET}"
 
+# Pinned expected sha256 of each download; required unless a bundled SHA256SUMS covers it.
+SDK_WHEEL_SHA256="${OCTOMIL_SDK_WHEEL_SHA256:-}"
+RUNTIME_SHA256="${OCTOMIL_RUNTIME_SHA256:-}"
+KOKORO_SHA256="${OCTOMIL_KOKORO_SHA256:-}"
+SDK_REQUIREMENTS="${OCTOMIL_SDK_REQUIREMENTS:-}"
+
 DEPS_DIR="$AUTORUN/lib/octomil-deps"
 RUNTIME_DIR="$AUTORUN/lib/octomil-runtime/${RUNTIME_VERSION}/tts"
 RUNTIME_LIB_DIR="$RUNTIME_DIR/lib"
@@ -167,6 +173,33 @@ verify_checksum() {
   )
 }
 
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    error "shasum or sha256sum is required." 69
+  fi
+}
+
+# Fails closed: an empty expected hash is an error, never a skip.
+verify_pinned() {
+  local path="$1"
+  local expected="$2"
+  local var="$3"
+  local actual
+
+  if [[ -z "$expected" ]]; then
+    error "$var is required: set it to the expected sha256 of $(basename "$path")." 66
+  fi
+  actual="$(sha256_of "$path")"
+  expected="$(printf '%s' "$expected" | tr 'A-F' 'a-f')"
+  if [[ "$actual" != "$expected" ]]; then
+    error "sha256 mismatch for $(basename "$path"): expected $expected, got $actual." 66
+  fi
+}
+
 backup_path() {
   local path="$1"
   printf '%s.backup.%s\n' "$path" "$(date +%Y%m%d-%H%M%S)"
@@ -236,9 +269,21 @@ install_sdk_deps() {
   local tmp_deps
   tmp_deps="$TMPDIR_PATH/octomil-deps"
 
+  local wheel
+  local pkgs=("octomil==${SDK_VERSION}" cffi)
+  if [[ -n "$SDK_REQUIREMENTS" ]]; then
+    # Hash-pinned lock covering octomil and all transitive deps.
+    pkgs=(--require-hashes -r "$SDK_REQUIREMENTS")
+  fi
+
   info "Installing Octomil SDK ${SDK_TAG} for Ren'Py Python ${PY_VERSION_DOT} (${PY_PLATFORM}, ${PY_ABI})..."
   if [[ -d "$VENDOR_WHEELHOUSE" ]]; then
     info "Using bundled wheelhouse: $VENDOR_WHEELHOUSE"
+    if [[ -z "$SDK_REQUIREMENTS" ]]; then
+      wheel="$(find "$VENDOR_WHEELHOUSE" -maxdepth 1 -name "octomil-${SDK_VERSION}-*.whl" -print -quit)"
+      [[ -n "$wheel" ]] || error "octomil-${SDK_VERSION} wheel not found in $VENDOR_WHEELHOUSE." 66
+      verify_pinned "$wheel" "$SDK_WHEEL_SHA256" OCTOMIL_SDK_WHEEL_SHA256
+    fi
     python3 -m pip install \
       --disable-pip-version-check \
       --upgrade \
@@ -250,9 +295,14 @@ install_sdk_deps() {
       --only-binary=:all: \
       --no-index \
       --find-links "$VENDOR_WHEELHOUSE" \
-      "octomil==${SDK_VERSION}" \
-      cffi
+      "${pkgs[@]}"
   else
+    if [[ -z "$SDK_REQUIREMENTS" ]]; then
+      wheel="$TMPDIR_PATH/$(basename "${SDK_WHEEL_URL%%\?*}")"
+      download "$SDK_WHEEL_URL" "$wheel"
+      verify_pinned "$wheel" "$SDK_WHEEL_SHA256" OCTOMIL_SDK_WHEEL_SHA256
+      pkgs=("$wheel" cffi)
+    fi
     python3 -m pip install \
       --disable-pip-version-check \
       --upgrade \
@@ -262,8 +312,7 @@ install_sdk_deps() {
       --implementation cp \
       --abi "$PY_ABI" \
       --only-binary=:all: \
-      "$SDK_WHEEL_URL" \
-      cffi
+      "${pkgs[@]}"
   fi
 
   if [[ -d "$DEPS_DIR" ]]; then
@@ -294,20 +343,21 @@ install_runtime() {
   if [[ -f "$VENDOR_RUNTIME_ARCHIVE" ]]; then
     info "Using bundled Octomil runtime: $VENDOR_RUNTIME_ARCHIVE"
     cp "$VENDOR_RUNTIME_ARCHIVE" "$archive"
-    if [[ -f "$VENDOR_RUNTIME_CHECKSUMS" ]]; then
+    if [[ -n "$RUNTIME_SHA256" ]]; then
+      verify_pinned "$archive" "$RUNTIME_SHA256" OCTOMIL_RUNTIME_SHA256
+    elif [[ -f "$VENDOR_RUNTIME_CHECKSUMS" ]]; then
       cp "$VENDOR_RUNTIME_CHECKSUMS" "$checksums"
       verify_checksum "$checksums" "$archive"
     elif [[ -f "${VENDOR_RUNTIME_ARCHIVE}.sha256" ]]; then
       cp "${VENDOR_RUNTIME_ARCHIVE}.sha256" "$checksums"
       verify_checksum "$checksums" "$archive"
     else
-      warn "Bundled runtime has no checksum file; skipping checksum verification."
+      error "Bundled runtime has no checksum: set OCTOMIL_RUNTIME_SHA256 or provide SHA256SUMS." 66
     fi
   else
     info "Downloading Octomil runtime ${RUNTIME_VERSION} tts/darwin-arm64..."
     download_runtime_release_asset "$RUNTIME_ASSET" "$archive"
-    download_runtime_release_asset "SHA256SUMS" "$checksums"
-    verify_checksum "$checksums" "$archive"
+    verify_pinned "$archive" "$RUNTIME_SHA256" OCTOMIL_RUNTIME_SHA256
   fi
 
   mkdir -p "$extracted"
@@ -346,9 +396,17 @@ install_kokoro_model() {
   if [[ -f "$VENDOR_KOKORO_ARCHIVE" ]]; then
     info "Using bundled Kokoro model: $VENDOR_KOKORO_ARCHIVE"
     cp "$VENDOR_KOKORO_ARCHIVE" "$archive"
+    if [[ -n "$KOKORO_SHA256" ]]; then
+      verify_pinned "$archive" "$KOKORO_SHA256" OCTOMIL_KOKORO_SHA256
+    elif [[ -f "$VENDOR_RUNTIME_CHECKSUMS" ]]; then
+      verify_checksum "$VENDOR_RUNTIME_CHECKSUMS" "$archive"
+    else
+      error "Bundled Kokoro model has no checksum: set OCTOMIL_KOKORO_SHA256 or provide SHA256SUMS." 66
+    fi
   else
     info "Downloading Kokoro model archive..."
     download "$KOKORO_URL" "$archive"
+    verify_pinned "$archive" "$KOKORO_SHA256" OCTOMIL_KOKORO_SHA256
   fi
 
   mkdir -p "$extracted"

@@ -21,6 +21,11 @@ RUNTIME_URL="${OCTOMIL_RUNTIME_URL:-https://github.com/octomil/octomil-runtime/r
 KOKORO_ASSET="${OCTOMIL_KOKORO_ASSET:-kokoro-multi-lang-v1_0.tar.bz2}"
 KOKORO_URL="${OCTOMIL_KOKORO_URL:-https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${KOKORO_ASSET}}"
 
+# Pinned expected sha256 of each input; required, no defaults.
+SDK_WHEEL_SHA256="${OCTOMIL_SDK_WHEEL_SHA256:-}"
+RUNTIME_SHA256="${OCTOMIL_RUNTIME_SHA256:-}"
+KOKORO_SHA256="${OCTOMIL_KOKORO_SHA256:-}"
+
 DIST="$ROOT/dist"
 WORK="$DIST/work"
 PACKAGE_NAME="octomil-renpy-tts-demo-${DEMO_VERSION}-macos-arm64"
@@ -34,6 +39,33 @@ info() {
 error() {
   printf '\033[1;31merror:\033[0m %s\n' "$1" >&2
   exit "${2:-1}"
+}
+
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    error "shasum or sha256sum is required." 69
+  fi
+}
+
+# Fails closed: an empty expected hash is an error, never a skip.
+verify_pinned() {
+  local path="$1"
+  local expected="$2"
+  local var="$3"
+  local actual
+
+  if [[ -z "$expected" ]]; then
+    error "$var is required: set it to the expected sha256 of $(basename "$path")." 66
+  fi
+  actual="$(sha256_of "$path")"
+  expected="$(printf '%s' "$expected" | tr 'A-F' 'a-f')"
+  if [[ "$actual" != "$expected" ]]; then
+    error "sha256 mismatch for $(basename "$path"): expected $expected, got $actual." 66
+  fi
 }
 
 download() {
@@ -78,6 +110,10 @@ download_runtime_archive() {
   download "$RUNTIME_URL" "$dest"
 }
 
+for _var in OCTOMIL_SDK_WHEEL_SHA256 OCTOMIL_RUNTIME_SHA256 OCTOMIL_KOKORO_SHA256; do
+  [[ -n "${!_var:-}" ]] || error "$_var is required (expected sha256 of the pinned artifact)." 66
+done
+
 rm -rf "$WORK"
 mkdir -p "$PACKAGE_DIR/vendor/wheelhouse" "$DIST"
 
@@ -90,6 +126,11 @@ rsync -a \
   "$ROOT/" "$PACKAGE_DIR/"
 
 info "Staging Octomil SDK wheelhouse for Ren'Py Python ${PY_VERSION_DOT} (${PY_PLATFORM}, ${PY_ABI})..."
+SDK_WHEEL_DIR="$WORK/sdk-wheel"
+SDK_WHEEL_PATH="$SDK_WHEEL_DIR/$(basename "${SDK_WHEEL_URL%%\?*}")"
+mkdir -p "$SDK_WHEEL_DIR"
+download "$SDK_WHEEL_URL" "$SDK_WHEEL_PATH"
+verify_pinned "$SDK_WHEEL_PATH" "$SDK_WHEEL_SHA256" OCTOMIL_SDK_WHEEL_SHA256
 python3 -m pip download \
   --disable-pip-version-check \
   --dest "$PACKAGE_DIR/vendor/wheelhouse" \
@@ -98,7 +139,7 @@ python3 -m pip download \
   --implementation cp \
   --abi "$PY_ABI" \
   --only-binary=:all: \
-  "$SDK_WHEEL_URL" \
+  "$SDK_WHEEL_PATH" \
   cffi
 
 source_archive="$(runtime_source)"
@@ -109,6 +150,7 @@ else
   info "Downloading runtime archive: $RUNTIME_ASSET"
   download_runtime_archive "$PACKAGE_DIR/vendor/$RUNTIME_ASSET"
 fi
+verify_pinned "$PACKAGE_DIR/vendor/$RUNTIME_ASSET" "$RUNTIME_SHA256" OCTOMIL_RUNTIME_SHA256
 
 if [[ -n "${OCTOMIL_KOKORO_ARCHIVE:-}" ]]; then
   info "Using local Kokoro archive: $OCTOMIL_KOKORO_ARCHIVE"
@@ -117,6 +159,7 @@ else
   info "Downloading Kokoro model archive: $KOKORO_URL"
   download "$KOKORO_URL" "$PACKAGE_DIR/vendor/$KOKORO_ASSET"
 fi
+verify_pinned "$PACKAGE_DIR/vendor/$KOKORO_ASSET" "$KOKORO_SHA256" OCTOMIL_KOKORO_SHA256
 
 (
   cd "$PACKAGE_DIR/vendor"
